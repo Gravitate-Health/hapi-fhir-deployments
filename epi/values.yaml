@@ -183,6 +183,12 @@ extraEnv:
     value: "R5"
   - name: HAPI_FHIR_CUSTOM_CONTENT_PATH
     value: "./custom"
+
+  - name: HAPI_FHIR_LANGUAGE_SEARCH_PARAMETER_ENABLED
+    value: "true"
+  - name: HAPI_FHIR_NARRATIVE_ENABLED
+    value: "true"
+  
   - name: HAPI_FHIR_ALLOW_CASCADING_DELETES
     value: "true"
   - name: HAPI_FHIR_ALLOW_CONTAINS_SEARCHES
