@@ -274,13 +274,3 @@ tests:
 
 # -- additional Spring Boot application config. Mounted as a file and automatically loaded by the application.
 extraConfig:
-  
-  # # For example:
-  |
-  hapi:
-    fhir:
-      implementationguides:
-        gh_0_1_0:
-          url: https://build.fhir.org/ig/hl7-eu/gravitate-health/package.tgz
-          name: hl7.eu.fhir.gh
-          version: 0.1.0
