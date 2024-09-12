@@ -202,7 +202,7 @@ extraEnv:
   - name: HAPI_FHIR_CORS_ALLOWED_ORIGIN
     value: "*"
   
-  - name: HAPI_FHIR_IMPLEMENTATIONGUIDES_IPS_2.0.0-BALLOT_URL
+  - name: HAPI_FHIR_IMPLEMENTATIONGUIDES_IPS_2.0.0-BALLOT_PACKAGEURL
     value: "https://build.fhir.org/ig/HL7/fhir-ips/package.tgz"
   - name: HAPI_FHIR_IMPLEMENTATIONGUIDES_IPS_2.0.0-BALLOT_NAME
     value: "hl7.fhir.uv.ips"
