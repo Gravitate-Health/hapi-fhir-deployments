@@ -31,6 +31,17 @@ Installation
 
 Refer to the [General FOSPS Deployment Documentation](https://github.com/Gravitate-Health/Documentation) to deploy this service.
 
+After installing or upgrading the helm release, run this command so that the probes work properly:
+```sh
+kubectl patch deployment fhir-server-epi \
+--type='json' \
+-p='[
+  {"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/path", "value": "/epi/api/livez"},
+  {"op": "replace", "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/path", "value": "/epi/api/readyz"},
+  {"op": "replace", "path": "/spec/template/spec/containers/0/startupProbe/httpGet/path", "value": "/epi/api/readyz"}
+]'
+```
+
 
 Usage
 -----
