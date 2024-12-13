@@ -166,13 +166,13 @@ externalDatabase:
   # -- database port number
   port: 5432
   # -- username for the external database
-  user: admin
+  user: fhir
   # -- database password
   password: ""
   # -- name of an existing secret resource containing the DB password in the `existingSecretKey` key
   existingSecret: "postgresql-fhir-ips"
   # -- name of the key inside the `existingSecret`
-  existingSecretKey: "postgres-password"
+  existingSecretKey: "password"
   # -- database name
   database: fhir
 

@@ -1,0 +1,14 @@
+spec:
+  template:
+    spec:
+      containers:
+        - name: hapi-fhir-jpaserver
+          livenessProbe:
+            httpGet:
+              path: /ips/api/livez
+          readinessProbe:
+            httpGet:
+              path: /ips/api/readyz
+          startupProbe:
+            httpGet:
+              path: /ips/api/readyz
