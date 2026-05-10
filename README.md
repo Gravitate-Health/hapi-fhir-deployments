@@ -18,6 +18,7 @@ Each chart bundles:
 - **PostgreSQL** via the [Bitnami chart](https://github.com/bitnami/charts/tree/main/bitnami/postgresql)
 - **Istio VirtualService** for external access through the platform gateway
 - **Probe-patch Job** that automatically corrects liveness/readiness/startup probe paths after every install or upgrade
+- **Auto-generated DB credentials Secret** — created on first install, preserved across upgrades, kept after uninstall
 
 ## Architecture
 
@@ -56,41 +57,39 @@ helm dependency update charts/fhir-ips
 ### 3. Deploy the ePI FHIR server
 
 ```bash
-helm install fhir-epi charts/fhir-epi \
-  --set postgresql.auth.postgresPassword=<admin-password> \
-  --set postgresql.auth.password=<app-password>
+helm install fhir-epi charts/fhir-epi
 ```
+
+A 32-character random password is generated automatically on first install and stored in the Secret `fhir-epi-postgresql`. No `--set` flags needed.
 
 ### 4. Deploy the IPS FHIR server
 
 ```bash
-helm install fhir-ips charts/fhir-ips \
-  --set postgresql.auth.postgresPassword=<admin-password> \
-  --set postgresql.auth.password=<app-password>
+helm install fhir-ips charts/fhir-ips
 ```
 
-### Using Kubernetes Secrets (recommended for production)
+Likewise, credentials are stored in the Secret `fhir-ips-postgresql`.
+
+### Credential management
+
+Both charts use Helm's `lookup` function to manage the DB credentials Secret automatically:
+
+| Event | Behaviour |
+|-------|-----------|
+| First install | Generates a random 32-char password; creates the Secret |
+| Upgrade | Looks up the existing Secret and reuses the same password |
+| `helm uninstall` | Secret is **kept** (`helm.sh/resource-policy: keep`) — PVC data stays accessible |
+
+To bring your own credentials, create the secret before installing and point the chart to it:
 
 ```bash
-# ePI
-kubectl create secret generic postgresql-fhir-epi \
+kubectl create secret generic my-fhir-epi-creds \
   --from-literal=postgres-password=<admin-pw> \
   --from-literal=password=<app-pw>
 
 helm install fhir-epi charts/fhir-epi \
-  --set postgresql.auth.existingSecret=postgresql-fhir-epi \
-  --set hapi.externalDatabase.existingSecret=postgresql-fhir-epi \
-  --set hapi.externalDatabase.existingSecretKey=password
-
-# IPS
-kubectl create secret generic postgresql-fhir-ips \
-  --from-literal=postgres-password=<admin-pw> \
-  --from-literal=password=<app-pw>
-
-helm install fhir-ips charts/fhir-ips \
-  --set postgresql.auth.existingSecret=postgresql-fhir-ips \
-  --set hapi.externalDatabase.existingSecret=postgresql-fhir-ips \
-  --set hapi.externalDatabase.existingSecretKey=password
+  --set postgresql.auth.existingSecret=my-fhir-epi-creds \
+  --set hapi.externalDatabase.existingSecret=my-fhir-epi-creds
 ```
 
 ## Upgrading

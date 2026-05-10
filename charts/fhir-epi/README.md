@@ -7,6 +7,7 @@ This chart bundles:
 - [Bitnami PostgreSQL](https://github.com/bitnami/charts/tree/main/bitnami/postgresql) — persistent database
 - **Istio VirtualService** — routes external traffic via the platform gateway
 - **Probe-patch Job** — post-install/upgrade hook that corrects HAPI's liveness/readiness/startup probes to the `/epi/api` context path
+- **Auto-generated DB credentials Secret** — created on first install, preserved across upgrades, kept after uninstall
 
 ## Prerequisites
 
@@ -37,31 +38,38 @@ helm dependency update charts/fhir-epi
 ### 3. Install
 
 ```bash
-helm install fhir-epi charts/fhir-epi \
-  --set postgresql.auth.postgresPassword=<admin-password> \
-  --set postgresql.auth.password=<app-password>
+helm install fhir-epi charts/fhir-epi
 ```
 
-> **Important:** The default `hapi.externalDatabase.host` is `fhir-epi-postgresql`, which matches the service created when the release is named `fhir-epi`. If you use a different release name, override this value accordingly:
+A 32-character random password is generated automatically and stored in the Secret `fhir-epi-postgresql`. No password flags required.
+
+> **Release name matters:** The default `hapi.externalDatabase.host` is `fhir-epi-postgresql`, matching a release named `fhir-epi`. If you use a different release name, override the host:
 > ```bash
 > helm install my-release charts/fhir-epi \
 >   --set hapi.externalDatabase.host=my-release-postgresql \
->   ...
+>   --set postgresql.auth.existingSecret=my-release-postgresql
 > ```
 
-### Production: use Kubernetes Secrets for DB credentials
+### Credential management
+
+The chart uses Helm's `lookup` function to manage the DB credentials Secret (`fhir-epi-postgresql` by default):
+
+| Event | Behaviour |
+|-------|-----------|
+| First install | Generates a random 32-char password; creates the Secret |
+| Upgrade | Looks up the existing Secret and reuses the same password |
+| `helm uninstall` | Secret is **kept** (`helm.sh/resource-policy: keep`) — PVC data stays accessible |
+
+To bring your own credentials, create the secret before installing and point the chart to it:
 
 ```bash
-# Create the secret first
-kubectl create secret generic postgresql-fhir-epi \
-  --from-literal=postgres-password=<admin-password> \
-  --from-literal=password=<app-password>
+kubectl create secret generic my-fhir-epi-creds \
+  --from-literal=postgres-password=<admin-pw> \
+  --from-literal=password=<app-pw>
 
-# Install referencing the secret
 helm install fhir-epi charts/fhir-epi \
-  --set postgresql.auth.existingSecret=postgresql-fhir-epi \
-  --set hapi.externalDatabase.existingSecret=postgresql-fhir-epi \
-  --set hapi.externalDatabase.existingSecretKey=password
+  --set postgresql.auth.existingSecret=my-fhir-epi-creds \
+  --set hapi.externalDatabase.existingSecret=my-fhir-epi-creds
 ```
 
 ### Upgrade
@@ -92,6 +100,7 @@ The probe-patch Job runs automatically on every upgrade.
 | `probePatch.enabled` | `true` | Run probe-patch Job post-install/upgrade |
 | `probePatch.deploymentName` | `fhir-server-epi` | Deployment name to patch |
 | `postgresql.enabled` | `true` | Bundle PostgreSQL sub-chart |
+| `postgresql.auth.existingSecret` | `fhir-epi-postgresql` | Secret name for DB credentials (auto-created) |
 | `postgresql.primary.persistence.size` | `8Gi` | DB volume size |
 | `postgresql.primary.persistence.existingClaim` | `""` | Use existing PVC |
 | `hapi.image.tag` | `v7.6.0` | HAPI FHIR Docker image tag |

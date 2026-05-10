@@ -57,7 +57,10 @@ postgresql:
     database: fhir
     # -- Existing secret with PostgreSQL credentials.
     # Keys expected: postgres-password, password.
-    existingSecret: ""
+    # This chart auto-generates and manages this secret using Helm's lookup function
+    # (idempotent: password preserved on upgrade). Override for custom names.
+    # When deployed via the helm-charts helmfile, override to "<release-name>-postgresql".
+    existingSecret: "fhir-epi-postgresql"
 
   primary:
     persistence:
@@ -111,12 +114,15 @@ hapi:
 
   externalDatabase:
     # When postgresql.enabled=true (default), set this to "<release-name>-postgresql".
-    # e.g. if you run `helm install fhir-epi charts/fhir-epi` → host: fhir-epi-postgresql
+    # e.g. standalone:  helm install fhir-epi charts/fhir-epi  → host: fhir-epi-postgresql
+    # e.g. via helmfile: release name is fhir-server-epi        → host: fhir-server-epi-postgresql
+    # The helm-charts helmfile repo overrides this in values/releases/fhir-server-epi.yaml.gotmpl
     host: "fhir-epi-postgresql"
     port: 5432
     user: fhir
     password: ""
-    existingSecret: ""
+    # -- Existing secret holding the DB password (auto-generated; matches postgresql.auth.existingSecret).
+    existingSecret: "fhir-epi-postgresql"
     existingSecretKey: "password"
     database: fhir
 
