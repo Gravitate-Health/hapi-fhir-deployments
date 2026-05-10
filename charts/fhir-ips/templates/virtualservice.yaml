@@ -1,0 +1,22 @@
+{{- if .Values.virtualService.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "fhir-ips.fullname" . }}-vs
+  labels:
+    {{- include "fhir-ips.labels" . | nindent 4 }}
+spec:
+  hosts:
+    {{- toYaml .Values.virtualService.hosts | nindent 4 }}
+  gateways:
+    - {{ .Values.virtualService.gateway }}
+  http:
+    - match:
+        - uri:
+            prefix: {{ .Values.virtualService.uriPrefix }}
+      route:
+        - destination:
+            host: {{ .Values.hapi.fullnameOverride }}.{{ .Release.Namespace }}.svc.cluster.local
+            port:
+              number: {{ .Values.hapi.service.port }}
+{{- end }}

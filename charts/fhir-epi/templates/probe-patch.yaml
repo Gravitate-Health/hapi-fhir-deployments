@@ -1,0 +1,102 @@
+{{- if .Values.probePatch.enabled }}
+---
+# ServiceAccount for the probe-patch Job
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "fhir-epi.fullname" . }}-probe-patch
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fhir-epi.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+---
+# Role allowing patch on deployments
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "fhir-epi.fullname" . }}-probe-patch
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fhir-epi.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "fhir-epi.fullname" . }}-probe-patch
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fhir-epi.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "fhir-epi.fullname" . }}-probe-patch
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "fhir-epi.fullname" . }}-probe-patch
+    namespace: {{ .Release.Namespace }}
+---
+# Job that patches the HAPI FHIR deployment probes to the correct context path
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "fhir-epi.fullname" . }}-probe-patch
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fhir-epi.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "fhir-epi.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "fhir-epi.fullname" . }}-probe-patch
+      restartPolicy: OnFailure
+      containers:
+        - name: probe-patch
+          image: {{ .Values.probePatch.image }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65532
+            capabilities:
+              drop: ["ALL"]
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Waiting for deployment {{ .Values.probePatch.deploymentName }} to exist..."
+              until kubectl get deployment {{ .Values.probePatch.deploymentName }} -n {{ .Release.Namespace }} > /dev/null 2>&1; do
+                sleep 5
+              done
+              echo "Patching probe paths..."
+              kubectl patch deployment {{ .Values.probePatch.deploymentName }} \
+                -n {{ .Release.Namespace }} \
+                --type='json' \
+                -p='[
+                  {"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/path",  "value": "{{ .Values.probePatch.livenessPath }}"},
+                  {"op": "replace", "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/path", "value": "{{ .Values.probePatch.readinessPath }}"},
+                  {"op": "replace", "path": "/spec/template/spec/containers/0/startupProbe/httpGet/path",   "value": "{{ .Values.probePatch.startupPath }}"}
+                ]'
+              echo "Probe patch applied successfully."
+{{- end }}

@@ -1,0 +1,44 @@
+Thank you for installing {{ .Chart.Name }} {{ .Chart.Version }}!
+
+FHIR IPS Server (R4 + IPS) has been deployed.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Deployment: {{ .Values.hapi.fullnameOverride }}
+  Context path: {{ (index .Values.hapi.extraEnv 0).value }}
+  FHIR version: R4 (IPS enabled)
+  Image: {{ .Values.hapi.image.registry }}/{{ .Values.hapi.image.repository }}:{{ .Values.hapi.image.tag }}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{{- if .Values.virtualService.enabled }}
+Istio VirtualService:
+  Gateway : {{ .Values.virtualService.gateway }}
+  URI prefix: {{ .Values.virtualService.uriPrefix }}
+{{- else }}
+⚠  VirtualService is disabled. Enable it with --set virtualService.enabled=true
+   or expose the service manually.
+{{- end }}
+
+{{- if .Values.probePatch.enabled }}
+
+A post-install Job will patch the liveness/readiness/startup probes
+to {{ .Values.probePatch.livenessPath }} automatically.
+Check its progress with:
+  kubectl get jobs -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+{{- end }}
+
+{{- if .Values.postgresql.enabled }}
+
+PostgreSQL is deployed as a sub-chart.
+  Internal host: {{ include "fhir-ips.postgresqlHost" . }}
+
+⚠  Ensure hapi.externalDatabase.host is set to:
+     {{ include "fhir-ips.postgresqlHost" . }}
+   (This should match the release name: helm install <release> ...)
+{{- end }}
+
+FHIR endpoint (via Istio):
+  https://<your-dns>{{ .Values.virtualService.uriPrefix }}/fhir/
+
+Health endpoints:
+  https://<your-dns>{{ .Values.probePatch.readinessPath }}
+  https://<your-dns>{{ .Values.probePatch.livenessPath }}

@@ -1,0 +1,187 @@
+# ────────────────────────────────────────────────────────────
+# Gravitate-Health fhir-ips chart – default values
+# ────────────────────────────────────────────────────────────
+
+# ---------------------------------------------------------------------------
+# Istio VirtualService
+# ---------------------------------------------------------------------------
+virtualService:
+  # -- Enable Istio VirtualService creation.
+  # Requires Istio to be installed in the cluster.
+  enabled: true
+  # -- Name of the Istio Gateway resource to attach to (must already exist).
+  gateway: gh-gateway
+  # -- Hosts to match in the VirtualService.
+  hosts:
+    - "*"
+  # -- URI prefix for routing to this FHIR server.
+  # Must match the server context path (SERVER_SERVLET_CONTEXT_PATH).
+  uriPrefix: /ips/api
+
+# ---------------------------------------------------------------------------
+# Probe patch Job
+# ---------------------------------------------------------------------------
+probePatch:
+  # -- Enable the post-install/post-upgrade Job that patches liveness,
+  # readiness and startup probe paths to match the server context path.
+  enabled: true
+  # -- Image used by the patch Job (needs kubectl).
+  image: bitnami/kubectl:latest
+  # -- Name of the Deployment to patch (must match hapi.fullnameOverride).
+  deploymentName: fhir-server-ips
+  # -- Liveness probe path (should be <contextPath>/livez).
+  livenessPath: /ips/api/livez
+  # -- Readiness probe path (should be <contextPath>/readyz).
+  readinessPath: /ips/api/readyz
+  # -- Startup probe path (should be <contextPath>/readyz).
+  startupPath: /ips/api/readyz
+
+# ---------------------------------------------------------------------------
+# PostgreSQL (Bitnami sub-chart)  –  alias: postgresql
+# ---------------------------------------------------------------------------
+postgresql:
+  # -- Enable the bundled PostgreSQL sub-chart.
+  # Set to false if you supply an external DB and configure hapi.externalDatabase instead.
+  enabled: true
+
+  auth:
+    # -- PostgreSQL admin password (postgres user).
+    # Use existingSecret in production.
+    postgresPassword: ""
+    # -- Application database user.
+    username: fhir
+    # -- Application database password.
+    # Use existingSecret in production.
+    password: ""
+    # -- Database name.
+    database: fhir
+    # -- Existing secret with PostgreSQL credentials.
+    # Keys expected: postgres-password, password.
+    existingSecret: ""
+
+  primary:
+    persistence:
+      enabled: true
+      # -- Size of the PVC created for PostgreSQL data.
+      size: 8Gi
+      # -- Provide an existing PVC name to reuse (leave empty to create a new one).
+      existingClaim: ""
+
+# ---------------------------------------------------------------------------
+# HAPI FHIR JPA Server (upstream sub-chart)  –  alias: hapi
+# All hapi-fhir-jpaserver chart values are available under hapi.*
+# See https://github.com/hapifhir/hapi-fhir-jpaserver-starter/tree/master/charts/hapi-fhir-jpaserver
+# ---------------------------------------------------------------------------
+hapi:
+  replicaCount: 1
+
+  image:
+    registry: docker.io
+    repository: hapiproject/hapi
+    tag: "v7.4.0"
+    pullPolicy: Always
+
+  nameOverride: "fhir-server-ips"
+  fullnameOverride: "fhir-server-ips"
+
+  podAnnotations:
+    sidecar.istio.io/rewriteAppHTTPProbers: "false"
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    privileged: false
+    seccompProfile:
+      type: RuntimeDefault
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  postgresql:
+    enabled: false   # managed by the parent chart dependency
+
+  externalDatabase:
+    # When postgresql.enabled=true (default), set this to "<release-name>-postgresql".
+    # e.g. if you run `helm install fhir-ips charts/fhir-ips` → host: fhir-ips-postgresql
+    host: "fhir-ips-postgresql"
+    port: 5432
+    user: fhir
+    password: ""
+    existingSecret: ""
+    existingSecretKey: "password"
+    database: fhir
+
+  startupProbe:
+    # Paths are patched post-install by the probePatch Job.
+    failureThreshold: 10
+    initialDelaySeconds: 600
+    periodSeconds: 30
+    successThreshold: 1
+    timeoutSeconds: 300
+
+  readinessProbe:
+    failureThreshold: 10
+    initialDelaySeconds: 30
+    periodSeconds: 20
+    successThreshold: 1
+    timeoutSeconds: 300
+
+  livenessProbe:
+    failureThreshold: 10
+    initialDelaySeconds: 300
+    periodSeconds: 20
+    successThreshold: 1
+    timeoutSeconds: 300
+
+  extraEnv:
+    - name: SERVER_SERVLET_CONTEXT_PATH
+      value: "/ips/api"
+    - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+      value: "health,prometheus"
+    - name: HAPI_FHIR_OPENAPI_ENABLED
+      value: "true"
+    - name: HAPI_FHIR_FHIR_VERSION
+      value: "R4"
+    - name: HAPI_FHIR_CUSTOM_CONTENT_PATH
+      value: "./custom"
+    - name: HAPI_FHIR_ALLOW_CASCADING_DELETES
+      value: "true"
+    - name: HAPI_FHIR_ALLOW_CONTAINS_SEARCHES
+      value: "true"
+    - name: HAPI_FHIR_ALLOW_EXTERNAL_REFERENCES
+      value: "true"
+    - name: HAPI_FHIR_ALLOW_MULTIPLE_DELETE
+      value: "true"
+    - name: HAPI_FHIR_IPS_ENABLED
+      value: "true"
+    - name: HAPI_FHIR_CORS_ALLOW_CREDENTIALS
+      value: "true"
+    - name: HAPI_FHIR_CORS_ALLOWED_ORIGIN
+      value: "*"
+    - name: HAPI_FHIR_IMPLEMENTATIONGUIDES_IPS_2.0.0-BALLOT_PACKAGEURL
+      value: "https://build.fhir.org/ig/HL7/fhir-ips/package.tgz"
+    - name: HAPI_FHIR_IMPLEMENTATIONGUIDES_IPS_2.0.0-BALLOT_NAME
+      value: "hl7.fhir.uv.ips"
+    - name: HAPI_FHIR_IMPLEMENTATIONGUIDES_IPS_2.0.0-BALLOT_VERSION
+      value: "2.0.0-ballot"
+
+  metrics:
+    serviceMonitor:
+      enabled: false
+      additionalLabels:
+        release: prometheus
+    service:
+      port: 8081
+
+  podDisruptionBudget:
+    enabled: false
+
+  serviceAccount:
+    create: false

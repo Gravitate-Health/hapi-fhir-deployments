@@ -1,0 +1,2 @@
+# Helm dependency tarballs (downloaded by `helm dependency update`)
+charts/*/charts/*.tgz

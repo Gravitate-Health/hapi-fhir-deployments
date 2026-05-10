@@ -1,0 +1,30 @@
+apiVersion: v2
+name: fhir-epi
+description: >
+  Helm chart for the Gravitate-Health ePI FHIR server (HAPI FHIR R5).
+  Bundles PostgreSQL (Bitnami) and HAPI FHIR JPA Server (upstream chart)
+  with Istio VirtualService and automatic probe patching.
+type: application
+version: 1.0.0
+appVersion: "v7.6.0"
+home: https://github.com/Gravitate-Health/hapi-fhir-deployments
+sources:
+  - https://github.com/Gravitate-Health/hapi-fhir-deployments
+keywords:
+  - fhir
+  - epi
+  - gravitate-health
+  - hapi
+maintainers:
+  - name: Gravitate-Health
+    url: https://github.com/Gravitate-Health
+dependencies:
+  - name: hapi-fhir-jpaserver
+    version: "0.22.0"
+    repository: https://hapifhir.github.io/hapi-fhir-jpaserver-starter/
+    alias: hapi
+  - name: postgresql
+    version: "18.6.4"
+    repository: https://charts.bitnami.com/bitnami
+    alias: postgresql
+    condition: postgresql.enabled

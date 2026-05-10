@@ -1,0 +1,9 @@
+dependencies:
+- name: hapi-fhir-jpaserver
+  repository: https://hapifhir.github.io/hapi-fhir-jpaserver-starter/
+  version: 0.22.0
+- name: postgresql
+  repository: https://charts.bitnami.com/bitnami
+  version: 18.6.4
+digest: sha256:d72e5f900925852572d42cb7c0244606875444d72375a6640f598bde2f017229
+generated: "2026-05-10T21:57:30.711101573+02:00"
