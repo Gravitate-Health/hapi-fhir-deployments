@@ -1,0 +1,27 @@
+name: Publish Helm Chart
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+jobs:
+  publish-fhir-epi-helm:
+    uses: Gravitate-Health/reusable-workflows/.github/workflows/helm-publish.yml@main
+    secrets: inherit  # Pass secrets from calling workflow
+    permissions:
+      contents: read
+      packages: write
+    with:
+      chart_path: charts/fhir-epi
+
+  publish-fhir-ips-helm:
+    uses: Gravitate-Health/reusable-workflows/.github/workflows/helm-publish.yml@main
+    secrets: inherit  # Pass secrets from calling workflow
+    permissions:
+      contents: read
+      packages: write
+    with:
+      chart_path: charts/fhir-ips
