@@ -9,19 +9,211 @@ on:
 
 jobs:
   publish-fhir-epi-helm:
-    uses: Gravitate-Health/reusable-workflows/.github/workflows/helm-publish.yml@main
-    secrets: inherit  # Pass secrets from calling workflow
+    name: Package and Push fhir-epi
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    with:
-      chart_path: charts/fhir-epi
+    env:
+      CHART_PATH: charts/fhir-epi
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add Helm repositories
+        run: |
+          helm repo add hapi-fhir https://hapifhir.github.io/hapi-fhir-jpaserver-starter/
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+
+      - name: Determine Version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_VERSION="${{ github.ref_name }}"
+            VERSION="${TAG_VERSION#v}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
+          else
+            CHART_VERSION=$(helm show chart ${{ env.CHART_PATH }} | grep '^version:' | awk '{print $2}')
+            VERSION="${CHART_VERSION}-dev"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Helm Dependencies
+        run: helm dependency build ${{ env.CHART_PATH }}
+
+      - name: Lint Helm Chart
+        run: helm lint ${{ env.CHART_PATH }}
+
+      - name: Template Helm Chart
+        run: |
+          helm template test-release ${{ env.CHART_PATH }} > /dev/null
+          echo "✅ Chart templates successfully"
+
+      - name: Package Helm Chart
+        id: package
+        run: |
+          helm package ${{ env.CHART_PATH }} --destination . --version ${{ steps.version.outputs.version }}
+          PACKAGE_NAME=$(ls *.tgz)
+          echo "Created package: $PACKAGE_NAME"
+          echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Push to OCI Registry
+        run: |
+          PACKAGE_NAME="${{ steps.package.outputs.package_name }}"
+          ORG_NAME="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          helm push $PACKAGE_NAME oci://ghcr.io/$ORG_NAME/charts
+
+          if [[ "${{ steps.version.outputs.is_release }}" == "false" ]]; then
+            CHART_NAME=$(helm show chart ${{ env.CHART_PATH }} | grep '^name:' | awk '{print $2}')
+            echo "Tagging as latest for main branch..."
+            curl -LO "https://github.com/oras-project/oras/releases/download/v1.1.0/oras_1.1.0_linux_amd64.tar.gz"
+            tar -xzf oras_1.1.0_linux_amd64.tar.gz
+            chmod +x oras
+            SOURCE="ghcr.io/$ORG_NAME/charts/$CHART_NAME:${{ steps.version.outputs.version }}"
+            DEST="ghcr.io/$ORG_NAME/charts/$CHART_NAME:latest"
+            ./oras copy "$SOURCE" "$DEST"
+            echo "✅ Also tagged as 'latest'"
+          fi
+
+      - name: Chart Summary
+        run: |
+          CHART_VERSION="${{ steps.version.outputs.version }}"
+          CHART_NAME=$(helm show chart ${{ env.CHART_PATH }} | grep '^name:' | awk '{print $2}')
+          ORG_NAME_LOWER="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          echo "## Helm Chart Published 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Chart:** ${{ env.CHART_PATH }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${CHART_VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** ghcr.io/${ORG_NAME_LOWER}/charts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ steps.version.outputs.is_release }}" == "true" ]]; then
+            echo "**Type:** Release (from tag)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Type:** Development (from branch)" >> $GITHUB_STEP_SUMMARY
+            echo "**Also tagged as:** latest" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "helm install my-release oci://ghcr.io/${ORG_NAME_LOWER}/charts/${CHART_NAME} --version ${CHART_VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
   publish-fhir-ips-helm:
-    uses: Gravitate-Health/reusable-workflows/.github/workflows/helm-publish.yml@main
-    secrets: inherit  # Pass secrets from calling workflow
+    name: Package and Push fhir-ips
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    with:
-      chart_path: charts/fhir-ips
+    env:
+      CHART_PATH: charts/fhir-ips
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add Helm repositories
+        run: |
+          helm repo add hapi-fhir https://hapifhir.github.io/hapi-fhir-jpaserver-starter/
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+
+      - name: Determine Version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_VERSION="${{ github.ref_name }}"
+            VERSION="${TAG_VERSION#v}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
+          else
+            CHART_VERSION=$(helm show chart ${{ env.CHART_PATH }} | grep '^version:' | awk '{print $2}')
+            VERSION="${CHART_VERSION}-dev"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Helm Dependencies
+        run: helm dependency build ${{ env.CHART_PATH }}
+
+      - name: Lint Helm Chart
+        run: helm lint ${{ env.CHART_PATH }}
+
+      - name: Template Helm Chart
+        run: |
+          helm template test-release ${{ env.CHART_PATH }} > /dev/null
+          echo "✅ Chart templates successfully"
+
+      - name: Package Helm Chart
+        id: package
+        run: |
+          helm package ${{ env.CHART_PATH }} --destination . --version ${{ steps.version.outputs.version }}
+          PACKAGE_NAME=$(ls *.tgz)
+          echo "Created package: $PACKAGE_NAME"
+          echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Push to OCI Registry
+        run: |
+          PACKAGE_NAME="${{ steps.package.outputs.package_name }}"
+          ORG_NAME="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          helm push $PACKAGE_NAME oci://ghcr.io/$ORG_NAME/charts
+
+          if [[ "${{ steps.version.outputs.is_release }}" == "false" ]]; then
+            CHART_NAME=$(helm show chart ${{ env.CHART_PATH }} | grep '^name:' | awk '{print $2}')
+            echo "Tagging as latest for main branch..."
+            curl -LO "https://github.com/oras-project/oras/releases/download/v1.1.0/oras_1.1.0_linux_amd64.tar.gz"
+            tar -xzf oras_1.1.0_linux_amd64.tar.gz
+            chmod +x oras
+            SOURCE="ghcr.io/$ORG_NAME/charts/$CHART_NAME:${{ steps.version.outputs.version }}"
+            DEST="ghcr.io/$ORG_NAME/charts/$CHART_NAME:latest"
+            ./oras copy "$SOURCE" "$DEST"
+            echo "✅ Also tagged as 'latest'"
+          fi
+
+      - name: Chart Summary
+        run: |
+          CHART_VERSION="${{ steps.version.outputs.version }}"
+          CHART_NAME=$(helm show chart ${{ env.CHART_PATH }} | grep '^name:' | awk '{print $2}')
+          ORG_NAME_LOWER="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          echo "## Helm Chart Published 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Chart:** ${{ env.CHART_PATH }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${CHART_VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** ghcr.io/${ORG_NAME_LOWER}/charts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ steps.version.outputs.is_release }}" == "true" ]]; then
+            echo "**Type:** Release (from tag)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Type:** Development (from branch)" >> $GITHUB_STEP_SUMMARY
+            echo "**Also tagged as:** latest" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "helm install my-release oci://ghcr.io/${ORG_NAME_LOWER}/charts/${CHART_NAME} --version ${CHART_VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
