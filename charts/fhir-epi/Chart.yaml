@@ -3,7 +3,7 @@ name: fhir-epi
 description: >
   Helm chart for the Gravitate-Health ePI FHIR server (HAPI FHIR R5).
   Bundles PostgreSQL (Bitnami) and HAPI FHIR JPA Server (upstream chart)
-  with Istio VirtualService and automatic probe patching.
+  with Istio VirtualService or Kubernetes Ingress (mutually exclusive) and automatic probe patching.
 type: application
 version: 1.0.0
 appVersion: "v7.6.0"

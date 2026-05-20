@@ -19,6 +19,35 @@ virtualService:
   uriPrefix: /epi/api
 
 # ---------------------------------------------------------------------------
+# Kubernetes Ingress (standard; alternative to Istio VirtualService)
+# virtualService and ingress are mutually exclusive; enabling both causes a
+# template error at render time.
+# ---------------------------------------------------------------------------
+ingress:
+  # -- Enable Kubernetes Ingress creation.
+  # Use this as an alternative to virtualService when Istio is not available.
+  enabled: false
+  # -- Ingress class name (e.g. "nginx", "traefik"). Leave empty to use the cluster default.
+  className: ""
+  # -- Additional annotations for the Ingress resource.
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  # -- Ingress host rules.
+  # Set host to "" or "*" to match all traffic regardless of hostname/IP
+  # (omits the host field from the Ingress rule). Set to an FQDN to restrict.
+  hosts:
+    - host: ""  # catch-all: matches any hostname or IP
+      paths:
+        - path: /epi/api
+          pathType: Prefix
+  # -- TLS configuration.
+  tls: []
+  #  - secretName: fhir-epi-tls
+  #    hosts:
+  #      - fhir-server.example.com
+
+# ---------------------------------------------------------------------------
 # Probe patch Job
 # ---------------------------------------------------------------------------
 probePatch:

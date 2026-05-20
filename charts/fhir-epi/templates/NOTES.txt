@@ -11,11 +11,18 @@ FHIR ePI Server (R5) has been deployed.
 
 {{- if .Values.virtualService.enabled }}
 Istio VirtualService:
-  Gateway : {{ .Values.virtualService.gateway }}
+  Gateway   : {{ .Values.virtualService.gateway }}
   URI prefix: {{ .Values.virtualService.uriPrefix }}
+{{- else if .Values.ingress.enabled }}
+Kubernetes Ingress:
+  Class : {{ default "(cluster default)" .Values.ingress.className }}
+  {{- range .Values.ingress.hosts }}
+  Host  : {{ .host }}
+  {{- end }}
 {{- else }}
-⚠  VirtualService is disabled. Enable it with --set virtualService.enabled=true
-   or expose the service manually.
+⚠  No ingress configured. Enable one:
+   Istio:    --set virtualService.enabled=true
+   Standard: --set ingress.enabled=true
 {{- end }}
 
 {{- if .Values.probePatch.enabled }}
@@ -36,9 +43,22 @@ PostgreSQL is deployed as a sub-chart.
    (This should match the release name: helm install <release> ...)
 {{- end }}
 
+{{- if .Values.virtualService.enabled }}
 FHIR endpoint (via Istio):
   https://<your-dns>{{ .Values.virtualService.uriPrefix }}/fhir/
 
 Health endpoints:
   https://<your-dns>{{ .Values.probePatch.readinessPath }}
   https://<your-dns>{{ .Values.probePatch.livenessPath }}
+{{- else if .Values.ingress.enabled }}
+FHIR endpoints:
+  {{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}{{ (index .paths 0).path }}/fhir/
+  {{- end }}
+
+Health endpoints:
+  {{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}{{ $.Values.probePatch.readinessPath }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}{{ $.Values.probePatch.livenessPath }}
+  {{- end }}
+{{- end }}

@@ -5,7 +5,8 @@ Helm chart for the **Gravitate-Health IPS FHIR server** (HAPI FHIR **R4** + IPS)
 This chart bundles:
 - [HAPI FHIR JPA Server](https://hapifhir.io/) (official upstream chart) — the FHIR server itself, with IPS (`$summary`) operation enabled
 - [Bitnami PostgreSQL](https://github.com/bitnami/charts/tree/main/bitnami/postgresql) — persistent database
-- **Istio VirtualService** — routes external traffic via the platform gateway
+- **Istio VirtualService** — routes external traffic via the platform gateway (mutually exclusive with Ingress)
+- **Kubernetes Ingress** — standard ingress alternative when Istio is not available (mutually exclusive with VirtualService)
 - **Probe-patch Job** — post-install/upgrade hook that corrects HAPI's liveness/readiness/startup probes to the `/ips/api` context path
 - **Auto-generated DB credentials Secret** — created on first install, preserved across upgrades, kept after uninstall
 
@@ -16,8 +17,11 @@ This chart bundles:
 | Kubernetes | ≥ 1.24 |
 | Helm | ≥ 3.10 |
 | Istio | ≥ 1.17 (if `virtualService.enabled=true`) |
+| Ingress controller | any (if `ingress.enabled=true`) |
 
 The Istio **Gateway** (`gh-gateway` by default) must already exist. It is managed by the [istio](https://github.com/Gravitate-Health/istio) repository.
+
+> **Note:** `virtualService.enabled` and `ingress.enabled` are mutually exclusive. Enabling both causes a template error.
 
 ## Installation
 
@@ -95,9 +99,14 @@ The probe-patch Job runs automatically on every upgrade.
 
 | Value | Default | Description |
 |-------|---------|-------------|
-| `virtualService.enabled` | `true` | Create Istio VirtualService |
+| `virtualService.enabled` | `true` | Create Istio VirtualService (mutually exclusive with `ingress.enabled`) |
 | `virtualService.gateway` | `gh-gateway` | Istio Gateway name |
 | `virtualService.uriPrefix` | `/ips/api` | URI prefix for routing |
+| `ingress.enabled` | `false` | Create Kubernetes Ingress (mutually exclusive with `virtualService.enabled`) |
+| `ingress.className` | `""` | Ingress class name (e.g. `nginx`); empty = cluster default |
+| `ingress.annotations` | `{}` | Extra annotations for the Ingress resource |
+| `ingress.hosts` | see values | Host rules; default path `/ips/api` with `Prefix` pathType |
+| `ingress.tls` | `[]` | TLS configuration for the Ingress |
 | `probePatch.enabled` | `true` | Run probe-patch Job post-install/upgrade |
 | `probePatch.deploymentName` | `fhir-server-ips` | Deployment name to patch |
 | `postgresql.enabled` | `true` | Bundle PostgreSQL sub-chart |
