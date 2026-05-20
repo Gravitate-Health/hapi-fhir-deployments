@@ -6,12 +6,12 @@ Helm charts for deploying the FHIR servers of the **Gravitate-Health FOSPS platf
 
 ## Overview
 
-The platform runs two independent FHIR server instances, each with its own Helm chart:
+The platform runs two independent FHIR server instances, each published as a Helm chart to the GitHub Container Registry:
 
-| Chart | Path | FHIR Version | Context path | Purpose |
-|-------|------|-------------|-------------|---------|
-| `fhir-epi` | `charts/fhir-epi/` | R5 | `/epi/api` | Stores electronic Product Information (ePI) FHIR resources |
-| `fhir-ips` | `charts/fhir-ips/` | R4 + IPS | `/ips/api` | Stores International Patient Summary (IPS) resources |
+| Chart | OCI Reference | FHIR Version | Context path | Purpose |
+|-------|--------------|-------------|-------------|---------|
+| `fhir-epi` | `oci://ghcr.io/gravitate-health/charts/fhir-epi` | R5 | `/epi/api` | Stores electronic Product Information (ePI) FHIR resources |
+| `fhir-ips` | `oci://ghcr.io/gravitate-health/charts/fhir-ips` | R4 + IPS | `/ips/api` | Stores International Patient Summary (IPS) resources |
 
 Each chart bundles:
 - **HAPI FHIR JPA Server** via the [official upstream Helm chart](https://github.com/hapifhir/hapi-fhir-jpaserver-starter/tree/master/charts/hapi-fhir-jpaserver) (no custom Docker image required)
@@ -37,42 +37,31 @@ Istio Gateway (gh-gateway)      ← managed by github.com/Gravitate-Health/istio
 - Helm ≥ 3.10
 - Istio ≥ 1.17 with the `gh-gateway` Gateway already deployed
 
-## Quick Start
+## Deploying
 
-### 1. Add Helm repositories
+The charts are published to GHCR and can be installed directly — no repo registration or dependency resolution required.
 
-```bash
-helm repo add hapifhir https://hapifhir.github.io/hapi-fhir-jpaserver-starter/
-helm repo add bitnami  https://charts.bitnami.com/bitnami
-helm repo update
-```
-
-### 2. Update chart dependencies
+### Deploy the ePI FHIR server
 
 ```bash
-helm dependency update charts/fhir-epi
-helm dependency update charts/fhir-ips
+helm install fhir-epi oci://ghcr.io/gravitate-health/charts/fhir-epi -f epi/values.yaml
 ```
 
-### 3. Deploy the ePI FHIR server
+### Deploy the IPS FHIR server
 
 ```bash
-helm install fhir-epi charts/fhir-epi
+helm install fhir-ips oci://ghcr.io/gravitate-health/charts/fhir-ips -f ips/values.yaml
 ```
 
-A 32-character random password is generated automatically on first install and stored in the Secret `fhir-epi-postgresql`. No `--set` flags needed.
-
-### 4. Deploy the IPS FHIR server
+To pin a specific chart version, add `--version <version>`:
 
 ```bash
-helm install fhir-ips charts/fhir-ips
+helm install fhir-epi oci://ghcr.io/gravitate-health/charts/fhir-epi --version 1.0.0 -f epi/values.yaml
 ```
-
-Likewise, credentials are stored in the Secret `fhir-ips-postgresql`.
 
 ### Credential management
 
-Both charts use Helm's `lookup` function to manage the DB credentials Secret automatically:
+DB credentials are managed automatically by the chart — no manual secret creation is needed:
 
 | Event | Behaviour |
 |-------|-----------|
@@ -80,26 +69,23 @@ Both charts use Helm's `lookup` function to manage the DB credentials Secret aut
 | Upgrade | Looks up the existing Secret and reuses the same password |
 | `helm uninstall` | Secret is **kept** (`helm.sh/resource-policy: keep`) — PVC data stays accessible |
 
-To bring your own credentials, create the secret before installing and point the chart to it:
-
-```bash
-kubectl create secret generic my-fhir-epi-creds \
-  --from-literal=postgres-password=<admin-pw> \
-  --from-literal=password=<app-pw>
-
-helm install fhir-epi charts/fhir-epi \
-  --set postgresql.auth.existingSecret=my-fhir-epi-creds \
-  --set hapi.externalDatabase.existingSecret=my-fhir-epi-creds
-```
-
 ## Upgrading
 
 ```bash
-helm upgrade fhir-epi charts/fhir-epi [--set ...]
-helm upgrade fhir-ips charts/fhir-ips [--set ...]
+helm upgrade fhir-epi oci://ghcr.io/gravitate-health/charts/fhir-epi -f epi/values.yaml
+helm upgrade fhir-ips oci://ghcr.io/gravitate-health/charts/fhir-ips -f ips/values.yaml
 ```
 
 The probe-patch Job runs automatically on every upgrade — no manual patching required.
+
+## Repository structure
+
+```
+epi/values.yaml          ← deployment values for the ePI FHIR server
+ips/values.yaml          ← deployment values for the IPS FHIR server
+charts/fhir-epi/         ← chart source (published to GHCR on merge to main / tag)
+charts/fhir-ips/         ← chart source (published to GHCR on merge to main / tag)
+```
 
 ## Chart documentation
 
@@ -110,14 +96,23 @@ The probe-patch Job runs automatically on every upgrade — no manual patching r
 
 The upstream HAPI FHIR Helm chart hardcodes probe paths to `/livez` and `/readyz`. When a server is deployed at a context path (e.g. `/epi/api`), the actual health endpoints become `/epi/api/livez` and `/epi/api/readyz`. Both charts include a post-install/upgrade Helm hook Job that automatically patches the probes to the correct paths using `kubectl patch`.
 
-## Publishing charts to GHCR
+## Developing charts locally
 
-Charts are published to the GitHub Container Registry via reusable CI/CD workflows. To package a chart manually:
+To test chart changes before publishing, build dependencies and install from the local source:
 
 ```bash
-helm package charts/fhir-epi --destination .
-helm package charts/fhir-ips --destination .
+helm repo add hapifhir https://hapifhir.github.io/hapi-fhir-jpaserver-starter/
+helm repo add bitnami  https://charts.bitnami.com/bitnami
+helm repo update
+
+helm dependency build charts/fhir-epi
+helm install fhir-epi charts/fhir-epi -f epi/values.yaml
+
+helm dependency build charts/fhir-ips
+helm install fhir-ips charts/fhir-ips -f ips/values.yaml
 ```
+
+Charts are published automatically to `oci://ghcr.io/gravitate-health/charts` on every push to `main` (as a `-dev` pre-release) and on every `v*` tag (as a versioned release).
 
 ## Usage
 
