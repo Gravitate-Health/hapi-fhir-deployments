@@ -178,8 +178,6 @@ hapi:
   extraEnv:
     - name: SERVER_SERVLET_CONTEXT_PATH
       value: "/ips/api"
-    - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-      value: "health,prometheus"
     - name: HAPI_FHIR_OPENAPI_ENABLED
       value: "true"
     - name: HAPI_FHIR_FHIR_VERSION
