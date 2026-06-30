@@ -161,21 +161,21 @@ hapi:
     initialDelaySeconds: 30
     periodSeconds: 30
     successThreshold: 1
-    timeoutSeconds: 300
+    timeoutSeconds: 600
 
   readinessProbe:
     failureThreshold: 5
     initialDelaySeconds: 30
     periodSeconds: 20
     successThreshold: 1
-    timeoutSeconds: 20
+    timeoutSeconds: 600
 
   livenessProbe:
     failureThreshold: 5
     initialDelaySeconds: 30
     periodSeconds: 20
     successThreshold: 1
-    timeoutSeconds: 300
+    timeoutSeconds: 600
 
   extraEnv:
     - name: SERVER_SERVLET_CONTEXT_PATH
