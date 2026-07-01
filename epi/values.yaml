@@ -209,6 +209,9 @@ extraEnv:
   - name: HAPI_FHIR_IMPLEMENTATIONGUIDES_GH_0_1_0_VERSION
     value: "0.1.0"
 
+  - name: JAVA_TOOL_OPTIONS
+    value: "-Xms3072m -Xmx6144m"
+
 podDisruptionBudget:
   # -- Enable PodDisruptionBudget for the server pods.
   # uses policy/v1/PodDisruptionBudget thus requiring k8s 1.21+
