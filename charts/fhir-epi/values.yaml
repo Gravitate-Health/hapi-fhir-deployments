@@ -215,6 +215,8 @@ hapi:
 
     - name: JAVA_TOOL_OPTIONS
       value: "-Xms3072m -Xmx6144m"
+    - name: HAPI_FHIR_NEVER_LOAD_CORE_PROFILE_FROM_CLASSPATH
+      value: "true"
 
   metrics:
     serviceMonitor:
