@@ -111,6 +111,14 @@ postgresql:
 hapi:
   replicaCount: 1
 
+  resources:
+    requests:
+      memory: "3Gi"
+      cpu: "1000m"
+    limits:
+      memory: "12Gi"
+      cpu: "3000m"
+
   image:
     registry: docker.io
     repository: hapiproject/hapi
