@@ -108,6 +108,7 @@ The probe-patch Job runs automatically on every upgrade.
 | `ingress.hosts` | see values | Host rules; default path `/ips/api` with `Prefix` pathType |
 | `ingress.tls` | `[]` | TLS configuration for the Ingress |
 | `probePatch.enabled` | `true` | Run probe-patch Job post-install/upgrade |
+| `probePatch.hookDeletePolicy` | `before-hook-creation` | Helm hook delete policy for probe patch resources |
 | `probePatch.deploymentName` | `fhir-server-ips` | Deployment name to patch |
 | `postgresql.enabled` | `true` | Bundle PostgreSQL sub-chart |
 | `postgresql.auth.existingSecret` | `fhir-ips-postgresql` | Secret name for DB credentials (auto-created) |

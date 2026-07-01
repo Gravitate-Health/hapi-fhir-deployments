@@ -54,6 +54,10 @@ probePatch:
   # -- Enable the post-install/post-upgrade Job that patches liveness,
   # readiness and startup probe paths to match the server context path.
   enabled: true
+  # -- Helm hook delete policy for probe patch hook resources.
+  # Use "before-hook-creation" to keep the latest successful Job for troubleshooting,
+  # or "before-hook-creation,hook-succeeded" to delete successful Jobs immediately.
+  hookDeletePolicy: before-hook-creation
   # -- Image used by the patch Job (needs kubectl).
   image: bitnami/kubectl:latest
   # -- Name of the Deployment to patch (must match hapi.fullnameOverride).
