@@ -213,6 +213,9 @@ hapi:
     - name: HAPI_FHIR_IMPLEMENTATIONGUIDES_GH_0_1_0_VERSION
       value: "0.1.0"
 
+    - name: JAVA_TOOL_OPTIONS
+      value: "-Xms3072m -Xmx6144m"
+
   metrics:
     serviceMonitor:
       enabled: false
