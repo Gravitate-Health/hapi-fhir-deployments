@@ -132,9 +132,6 @@ postgresql:
 
 # -- readiness probe
 readinessProbe:
-  httpGet:
-    path: /ips/api/readyz
-    port: 8080
   failureThreshold: 10
   initialDelaySeconds: 30
   periodSeconds: 20
@@ -150,9 +147,6 @@ startupProbe:
   timeoutSeconds: 300
 
 livenessProbe:
-  httpGet:
-    path: /ips/api/healthz
-    port: 8080
   failureThreshold: 10
   initialDelaySeconds: 300
   periodSeconds: 20
