@@ -160,7 +160,7 @@ hapi:
   startupProbe:
     # Paths are patched post-install by the probePatch Job.
     failureThreshold: 10
-    initialDelaySeconds: 30
+    initialDelaySeconds: 600
     periodSeconds: 30
     successThreshold: 1
     timeoutSeconds: 300
